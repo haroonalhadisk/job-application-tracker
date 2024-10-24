@@ -5,7 +5,9 @@ from tkinter.scrolledtext import ScrolledText
 import traceback
 from datetime import datetime
 import webbrowser
+import json
 import csv
+import logging
 import platform
 from typing import Optional, Dict, List, Any
 from data_manager import DataManager
@@ -20,9 +22,18 @@ class JobTracker:
         self.root.title("Job Application Tracker")
         self.root.geometry("1200x800")
         
-        # Theme settings
-        self.is_dark_mode = tk.BooleanVar(value=False)
-        self.set_theme()
+        # Set default theme colors
+        self.colors = {
+            'bg': '#ffffff',
+            'fg': '#000000',
+            'button': '#f0f0f0',
+            'entry': '#ffffff',
+            'table_bg': '#ffffff',
+            'table_fg': '#000000',
+            'highlight': '#e6e6e6'
+        }
+        
+        self.root.configure(bg=self.colors['bg'])
         
         # Initialize data manager
         self.data_manager = DataManager("job_applications.json")
@@ -36,46 +47,17 @@ class JobTracker:
         self.show_rejected = tk.BooleanVar(value=True)
         self.selected_country = tk.StringVar(value="All")
         
+        # Setup styles
+        self.setup_styles()
+        
         # Setup GUI
         self.setup_gui()
         
         # Load initial data after GUI is ready
         self.root.after(100, self.initial_data_load)
         
-    def initial_data_load(self) -> None:
-        """Handle initial data loading and display."""
-        self.refresh_list()
-        if self.applications and self.tree.get_children():
-            first_item = self.tree.get_children()[0]
-            self.tree.selection_set(first_item)
-            self.tree.see(first_item)
-            self.show_selected_details()
-            
-    def set_theme(self) -> None:
-        """Configure application color scheme."""
-        if self.is_dark_mode.get():
-            self.colors = {
-                'bg': '#2d2d2d',
-                'fg': '#ffffff',
-                'button': '#404040',
-                'entry': '#363636',
-                'table_bg': '#363636',
-                'table_fg': '#ffffff',
-                'highlight': '#4a4a4a'
-            }
-        else:
-            self.colors = {
-                'bg': '#ffffff',
-                'fg': '#000000',
-                'button': '#f0f0f0',
-                'entry': '#ffffff',
-                'table_bg': '#ffffff',
-                'table_fg': '#000000',
-                'highlight': '#e6e6e6'
-            }
-            
-        self.root.configure(bg=self.colors['bg'])
-        
+    def setup_styles(self) -> None:
+        """Configure application styles."""
         self.style = ttk.Style()
         self.style.configure('Custom.TButton',
                            background=self.colors['button'],
@@ -88,26 +70,15 @@ class JobTracker:
                            foreground=self.colors['table_fg'],
                            fieldbackground=self.colors['table_bg'])
         
-        self.update_widget_colors()
-        
-    def update_widget_colors(self) -> None:
-        """Update colors of existing widgets."""
-        for widget in self.root.winfo_children():
-            if isinstance(widget, tk.Frame):
-                widget.configure(bg=self.colors['bg'])
-                for child in widget.winfo_children():
-                    if isinstance(child, tk.Label):
-                        child.configure(bg=self.colors['bg'],
-                                     fg=self.colors['fg'])
-                    elif isinstance(child, tk.Frame):
-                        child.configure(bg=self.colors['bg'])
-                        for grandchild in child.winfo_children():
-                            if isinstance(grandchild, tk.Label):
-                                grandchild.configure(
-                                    bg=self.colors['bg'],
-                                    fg=self.colors['fg']
-                                )
-                                
+    def initial_data_load(self) -> None:
+        """Handle initial data loading and display."""
+        self.refresh_list()
+        if self.applications and self.tree.get_children():
+            first_item = self.tree.get_children()[0]
+            self.tree.selection_set(first_item)
+            self.tree.see(first_item)
+            self.show_selected_details()
+            
     def setup_gui(self) -> None:
         """Setup the main GUI layout."""
         # Main container
@@ -135,12 +106,6 @@ class JobTracker:
         # Left side controls
         left_controls = tk.Frame(control_frame, bg=self.colors['bg'])
         left_controls.pack(side=tk.LEFT)
-        
-        # Theme toggle
-        ttk.Button(left_controls,
-                  text="Toggle Theme",
-                  style='Custom.TButton',
-                  command=self.toggle_theme).pack(side=tk.LEFT, padx=5)
         
         # Add New button
         ttk.Button(left_controls,
@@ -266,10 +231,8 @@ class JobTracker:
         details_columns = tk.Frame(self.details_panel, bg=self.colors['bg'])
         details_columns.pack(fill=tk.BOTH, expand=True)
         
-        # Setup left column
+        # Setup columns
         self.setup_details_left_column(details_columns)
-        
-        # Setup right column
         self.setup_details_right_column(details_columns)
         
         # Initially pack the panel
@@ -454,7 +417,7 @@ class JobTracker:
                     break
         else:
             messagebox.showerror("Error", "Failed to save application.")
-
+            
     def show_selected_details(self, event=None) -> None:
         """Display details of selected application."""
         selection = self.tree.selection()
@@ -507,11 +470,6 @@ class JobTracker:
             logging.error(f"Error displaying details: {str(e)}")
             traceback.print_exc()
             
-    def toggle_theme(self) -> None:
-        """Toggle between light and dark theme."""
-        self.is_dark_mode.set(not self.is_dark_mode.get())
-        self.set_theme()
-        
     def open_link(self) -> None:
         """Open tracking link in browser."""
         link = self.details_vars['link'].get()

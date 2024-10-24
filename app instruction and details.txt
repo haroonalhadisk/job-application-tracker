@@ -9,7 +9,7 @@ Desktop application built with Python/Tkinter for tracking job applications with
 - Python 3.7+
 - Tkinter for GUI
 - JSON for data persistence
-- Required dependencies: darkdetect==0.8.0
+- Required dependencies: None (removed darkdetect dependency)
 
 ## Project Structure
 
@@ -20,7 +20,6 @@ job_tracker/
 ├── job_tracker.py     # Main application file
 ├── form_dialog.py     # Form dialog implementation
 ├── data_manager.py    # Data handling operations
-├── requirement.txt    # Project dependencies
 └── job_applications.json  # Data storage file
 ```
 
@@ -41,7 +40,6 @@ job_tracker/
 - Status tracking (Not Applied → Applied → Approved/Rejected)
 - Data filtering and sorting
 - Data export (JSON/CSV/TXT)
-- Theme switching (Dark/Light)
 
 ## Component Architecture
 
@@ -55,7 +53,7 @@ job_tracker/
 ### 2. FormDialog Class
 - Modal dialog for adding/editing applications
 - Form validation and data collection
-- Theme-aware UI components
+- Consistent UI components
 - Centered positioning on screen
 
 ### 3. DataManager Class
@@ -170,7 +168,6 @@ def handle_dialog_submit(self, application):
 1. Test Add New Application
    - Verify dialog appears centered
    - Test form validation
-   - Verify theme consistency
    - Check modal behavior
 2. Test Edit Application
    - Verify data loading
@@ -183,12 +180,11 @@ def handle_dialog_submit(self, application):
    - Verify proper selection after deletion
 
 ### 3. UI Interactions
-1. Theme switching
-2. Sorting columns
-3. Filtering data
-4. Exporting data
-5. Dialog interactions
-6. Delete functionality
+1. Sorting columns
+2. Filtering data
+3. Exporting data
+4. Dialog interactions
+5. Delete functionality
    - Top panel delete button
    - Details panel delete button
    - Confirmation dialog
@@ -209,9 +205,6 @@ git clone [repository-url]
 
 # Navigate to directory
 cd job-tracker
-
-# Install dependencies
-pip install -r requirements.txt
 
 # Run application
 python job_tracker.py
@@ -238,7 +231,6 @@ test_data = {
 ### 1. Form Dialog Implementation
 - Always use modal dialogs for data entry
 - Center dialogs on screen
-- Maintain theme consistency
 - Provide clear validation feedback
 - Handle window focus properly
 
@@ -261,7 +253,6 @@ test_data = {
 - Maintain selection state
 - Update related components
 - Handle visibility properly
-- Ensure theme consistency
 - Manage deletion state
 
 ### 5. Delete Operation Safety
@@ -277,27 +268,22 @@ test_data = {
 ### 1. Dialog Positioning
 - Dialog now automatically centers on screen
 - Handles multiple monitors properly
-- Maintains position on theme change
+- Maintains consistent position
 
-### 2. Theme Consistency
-- All components now respect theme settings
-- Dialog inherits theme from parent
-- Proper color inheritance in nested widgets
-
-### 3. Form Validation
+### 2. Form Validation
 - Required fields clearly marked
 - Immediate feedback on validation
 - Prevents invalid data submission
 - Clear error messages
 
-### 4. Data Integrity
+### 3. Data Integrity
 - Consistent ID handling
 - Proper date formatting
 - Status validation
 - Required field enforcement
 - Safe deletion handling
 
-### 5. Delete Operation Handling
+### 4. Delete Operation Handling
 - Confirmation required for deletion
 - Clear feedback messages
 - Proper selection handling
