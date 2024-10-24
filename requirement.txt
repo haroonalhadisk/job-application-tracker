@@ -1,0 +1,2 @@
+tkinter
+darkdetect==0.8.0

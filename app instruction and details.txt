@@ -1,0 +1,242 @@
+# Job Application Tracker - Developer Documentation
+
+## Application Overview
+
+### Purpose
+Desktop application built with Python/Tkinter for tracking job applications with a focus on maintaining application status, details, and comments in a local environment.
+
+### Core Technology Stack
+- Python 3.7+
+- Tkinter for GUI
+- JSON for data persistence
+- Required dependencies: darkdetect==0.8.0
+
+## Project Structure
+
+### Files Organization
+```
+job_tracker/
+│
+├── job_tracker.py     # Main application file
+├── form_dialog.py     # Form dialog implementation
+├── data_manager.py    # Data handling operations
+├── requirement.txt    # Project dependencies
+└── job_applications.json  # Data storage file
+```
+
+## Key Features
+
+### 1. User Interface Components
+- Main application table (Treeview)
+- Details panel (Bottom section)
+- Modal form dialog for Add/Edit operations
+- Control panel (Top section)
+
+### 2. Functionality
+- CRUD operations for job applications
+- Status tracking (Not Applied → Applied → Approved/Rejected)
+- Data filtering and sorting
+- Data export (JSON/CSV/TXT)
+- Theme switching (Dark/Light)
+
+## Component Architecture
+
+### 1. JobTracker Class
+- Main application window
+- Manages application state and UI updates
+- Handles user interactions and data display
+- Coordinates between UI and data operations
+
+### 2. FormDialog Class
+- Modal dialog for adding/editing applications
+- Form validation and data collection
+- Theme-aware UI components
+- Centered positioning on screen
+
+### 3. DataManager Class
+- Handles all data operations
+- JSON file reading and writing
+- Data validation and cleanup
+- Error handling and logging
+
+### Component Relationships
+
+```mermaid
+graph TD
+    A[JobTracker] --> B[Control Panel]
+    A --> C[Application Table]
+    A --> D[Details Panel]
+    A --> E[FormDialog]
+    A --> F[DataManager]
+    E -- Submit --> F
+    F -- Load/Save --> G[JSON File]
+    B -- Add/Edit --> E
+    C -- Selection --> D
+```
+
+## Data Flow
+
+### 1. File Operations
+```python
+# Data Storage Pattern
+{
+    "company": str,
+    "position": str,
+    "date": "YYYY-MM-DD",
+    "status": "not_applied|applied|approved|rejected",
+    "country": str,
+    "state": str,
+    "link": str,
+    "description": str,
+    "comments": str,
+    "id": str  # Format: YYYYMMDDHHMMSS
+}
+```
+
+### 2. Critical Methods
+
+#### Form Dialog Creation
+```python
+def show_add_dialog(self):
+    """Show dialog for adding new application."""
+    dialog = FormDialog(self.root, self.colors, self.handle_dialog_submit)
+    
+def show_edit_dialog(self):
+    """Show dialog for editing application."""
+    if hasattr(self, 'current_app_id'):
+        app = next((a for a in self.applications
+                   if a['id'] == self.current_app_id), None)
+        if app:
+            dialog = FormDialog(self.root, self.colors,
+                              self.handle_dialog_submit, app)
+```
+
+#### Data Handling
+```python
+def handle_dialog_submit(self, application):
+    """Handle form dialog submission."""
+    if 'id' in application:  # Editing existing
+        self.applications = [app for app in self.applications
+                           if app['id'] != application['id']]
+    self.applications.append(application)
+    
+    if self.data_manager.save_data(self.applications):
+        self.refresh_list()
+```
+
+## Testing Protocol
+
+### 1. Startup Sequence
+1. Launch application
+2. Verify data loads
+3. Verify table population
+4. Verify details panel visibility
+5. Verify initial selection
+
+### 2. Form Dialog Testing
+1. Test Add New Application
+   - Verify dialog appears centered
+   - Test form validation
+   - Verify theme consistency
+   - Check modal behavior
+2. Test Edit Application
+   - Verify data loading
+   - Test updates
+   - Verify cancel operation
+
+### 3. UI Interactions
+1. Theme switching
+2. Sorting columns
+3. Filtering data
+4. Exporting data
+5. Dialog interactions
+
+### 4. Data Consistency Checks
+1. Verify ID handling
+2. Check data persistence
+3. Validate form input
+4. Test export functionality
+
+## Development Environment Setup
+
+```bash
+# Clone repository
+git clone [repository-url]
+
+# Navigate to directory
+cd job-tracker
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run application
+python job_tracker.py
+```
+
+## Test Data Generation
+```python
+test_data = {
+    "company": "Test Corp",
+    "position": "Developer",
+    "date": "2024-01-01",
+    "status": "applied",
+    "country": "USA",
+    "state": "CA",
+    "link": "https://example.com",
+    "description": "Test job",
+    "comments": "Test comment",
+    "id": "20240101000000"
+}
+```
+
+## Best Practices
+
+### 1. Form Dialog Implementation
+- Always use modal dialogs for data entry
+- Center dialogs on screen
+- Maintain theme consistency
+- Provide clear validation feedback
+- Handle window focus properly
+
+### 2. Data Management
+- Use consistent ID generation
+- Validate all required fields
+- Clean input data
+- Handle missing fields gracefully
+- Maintain data integrity
+
+### 3. Error Handling
+- Log all errors with context
+- Provide user feedback
+- Maintain data consistency
+- Handle UI state properly
+
+### 4. UI State Management
+- Maintain selection state
+- Update related components
+- Handle visibility properly
+- Ensure theme consistency
+
+## Common Issues and Solutions
+
+### 1. Dialog Positioning
+- Dialog now automatically centers on screen
+- Handles multiple monitors properly
+- Maintains position on theme change
+
+### 2. Theme Consistency
+- All components now respect theme settings
+- Dialog inherits theme from parent
+- Proper color inheritance in nested widgets
+
+### 3. Form Validation
+- Required fields clearly marked
+- Immediate feedback on validation
+- Prevents invalid data submission
+- Clear error messages
+
+### 4. Data Integrity
+- Consistent ID handling
+- Proper date formatting
+- Status validation
+- Required field enforcement
