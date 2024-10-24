@@ -34,6 +34,10 @@ job_tracker/
 
 ### 2. Functionality
 - CRUD operations for job applications
+  - Create: Add new applications
+  - Read: View application details
+  - Update: Edit existing applications
+  - Delete: Remove applications with confirmation
 - Status tracking (Not Applied → Applied → Approved/Rejected)
 - Data filtering and sorting
 - Data export (JSON/CSV/TXT)
@@ -46,6 +50,7 @@ job_tracker/
 - Manages application state and UI updates
 - Handles user interactions and data display
 - Coordinates between UI and data operations
+- Provides deletion functionality with safety checks
 
 ### 2. FormDialog Class
 - Modal dialog for adding/editing applications
@@ -70,7 +75,7 @@ graph TD
     A --> F[DataManager]
     E -- Submit --> F
     F -- Load/Save --> G[JSON File]
-    B -- Add/Edit --> E
+    B -- Add/Edit/Delete --> E
     C -- Selection --> D
 ```
 
@@ -111,6 +116,34 @@ def show_edit_dialog(self):
                               self.handle_dialog_submit, app)
 ```
 
+#### Application Deletion
+```python
+def delete_selected_application(self) -> None:
+    """Delete the currently selected application after confirmation."""
+    if not hasattr(self, 'current_app_id'):
+        messagebox.showwarning(
+            "No Selection",
+            "Please select an application to delete."
+        )
+        return
+        
+    # Get application details for confirmation message
+    app = next((a for a in self.applications
+               if a['id'] == self.current_app_id), None)
+    if not app:
+        return
+        
+    # Show confirmation dialog
+    confirm = messagebox.askyesno(
+        "Confirm Deletion",
+        f"Are you sure you want to delete the application for:\n\n"
+        f"Company: {app['company']}\n"
+        f"Position: {app['position']}\n\n"
+        "This action cannot be undone.",
+        icon='warning'
+    )
+```
+
 #### Data Handling
 ```python
 def handle_dialog_submit(self, application):
@@ -143,6 +176,11 @@ def handle_dialog_submit(self, application):
    - Verify data loading
    - Test updates
    - Verify cancel operation
+3. Test Delete Application
+   - Verify confirmation dialog appears
+   - Test deletion with and without confirmation
+   - Check list refresh after deletion
+   - Verify proper selection after deletion
 
 ### 3. UI Interactions
 1. Theme switching
@@ -150,12 +188,18 @@ def handle_dialog_submit(self, application):
 3. Filtering data
 4. Exporting data
 5. Dialog interactions
+6. Delete functionality
+   - Top panel delete button
+   - Details panel delete button
+   - Confirmation dialog
+   - Selection handling
 
 ### 4. Data Consistency Checks
 1. Verify ID handling
 2. Check data persistence
 3. Validate form input
 4. Test export functionality
+5. Verify deletion integrity
 
 ## Development Environment Setup
 
@@ -204,18 +248,29 @@ test_data = {
 - Clean input data
 - Handle missing fields gracefully
 - Maintain data integrity
+- Ensure safe deletion with confirmation
 
 ### 3. Error Handling
 - Log all errors with context
 - Provide user feedback
 - Maintain data consistency
 - Handle UI state properly
+- Validate deletion operations
 
 ### 4. UI State Management
 - Maintain selection state
 - Update related components
 - Handle visibility properly
 - Ensure theme consistency
+- Manage deletion state
+
+### 5. Delete Operation Safety
+- Always show confirmation dialog
+- Display relevant application details in confirmation
+- Provide clear warning about irreversible action
+- Handle edge cases (no selection)
+- Maintain data consistency after deletion
+- Update UI state appropriately
 
 ## Common Issues and Solutions
 
@@ -240,3 +295,11 @@ test_data = {
 - Proper date formatting
 - Status validation
 - Required field enforcement
+- Safe deletion handling
+
+### 5. Delete Operation Handling
+- Confirmation required for deletion
+- Clear feedback messages
+- Proper selection handling
+- List refresh after deletion
+- Selection maintenance

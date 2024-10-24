@@ -132,33 +132,43 @@ class JobTracker:
         control_frame = tk.Frame(self.main_container, bg=self.colors['bg'])
         control_frame.pack(fill=tk.X, pady=(0, 10))
         
+        # Left side controls
+        left_controls = tk.Frame(control_frame, bg=self.colors['bg'])
+        left_controls.pack(side=tk.LEFT)
+        
         # Theme toggle
-        ttk.Button(control_frame,
+        ttk.Button(left_controls,
                   text="Toggle Theme",
                   style='Custom.TButton',
                   command=self.toggle_theme).pack(side=tk.LEFT, padx=5)
         
         # Add New button
-        ttk.Button(control_frame,
+        ttk.Button(left_controls,
                   text="Add New Application",
                   style='Custom.TButton',
                   command=self.show_add_dialog).pack(side=tk.LEFT, padx=5)
         
+        # Delete button in controls
+        ttk.Button(left_controls,
+                  text="Delete Selected",
+                  style='Custom.TButton',
+                  command=self.delete_selected_application).pack(side=tk.LEFT, padx=5)
+        
         # Show/Hide rejected
-        ttk.Checkbutton(control_frame,
+        ttk.Checkbutton(left_controls,
                        text="Show Rejected",
                        variable=self.show_rejected,
                        command=self.refresh_list).pack(side=tk.LEFT, padx=5)
         
         # Country filter
-        self.update_country_filter(control_frame)
+        self.update_country_filter(left_controls)
         
-        # Export button
+        # Export button (right side)
         ttk.Button(control_frame,
                   text="Export Data",
                   style='Custom.TButton',
                   command=self.export_data).pack(side=tk.RIGHT, padx=5)
-        
+                  
     def update_country_filter(self, parent: tk.Frame) -> None:
         """Update country filter dropdown."""
         countries = ["All"] + sorted(list(set(
@@ -238,9 +248,19 @@ class JobTracker:
                 bg=self.colors['bg'],
                 fg=self.colors['fg']).pack(side=tk.LEFT)
         
-        ttk.Button(title_frame,
+        # Button frame for multiple buttons
+        button_frame = tk.Frame(title_frame, bg=self.colors['bg'])
+        button_frame.pack(side=tk.RIGHT)
+        
+        # Delete button in details panel
+        ttk.Button(button_frame,
+                  text="Delete",
+                  command=self.delete_selected_application).pack(side=tk.RIGHT, padx=(5, 0))
+        
+        # Edit button
+        ttk.Button(button_frame,
                   text="Edit Application",
-                  command=self.edit_application).pack(side=tk.RIGHT)
+                  command=self.edit_application).pack(side=tk.RIGHT, padx=5)
         
         # Create two columns
         details_columns = tk.Frame(self.details_panel, bg=self.colors['bg'])
@@ -352,6 +372,56 @@ class JobTracker:
         
         self.details_comments = ScrolledText(right_col, height=4)
         self.details_comments.pack(fill=tk.BOTH, expand=True)
+
+    def delete_selected_application(self) -> None:
+        """Delete the currently selected application after confirmation."""
+        if not hasattr(self, 'current_app_id'):
+            messagebox.showwarning(
+                "No Selection",
+                "Please select an application to delete."
+            )
+            return
+            
+        # Get application details for confirmation message
+        app = next((a for a in self.applications
+                   if a['id'] == self.current_app_id), None)
+        if not app:
+            return
+            
+        # Show confirmation dialog
+        confirm = messagebox.askyesno(
+            "Confirm Deletion",
+            f"Are you sure you want to delete the application for:\n\n"
+            f"Company: {app['company']}\n"
+            f"Position: {app['position']}\n\n"
+            "This action cannot be undone.",
+            icon='warning'
+        )
+        
+        if not confirm:
+            return
+            
+        # Remove application from list
+        self.applications = [a for a in self.applications
+                           if a['id'] != self.current_app_id]
+        
+        # Save updated data
+        if self.data_manager.save_data(self.applications):
+            # Clear current selection
+            self.current_app_id = None
+            
+            # Refresh the list
+            self.refresh_list()
+            
+            messagebox.showinfo(
+                "Success",
+                "Application deleted successfully!"
+            )
+        else:
+            messagebox.showerror(
+                "Error",
+                "Failed to delete application. Please try again."
+            )
 
     def show_add_dialog(self):
         """Show dialog for adding new application."""
@@ -547,7 +617,7 @@ class JobTracker:
             first_item = self.tree.get_children()[0]
             self.tree.selection_set(first_item)
             self.show_selected_details()
-    
+            
     def edit_application(self):
         """Show dialog for editing current application."""
         self.show_edit_dialog()
