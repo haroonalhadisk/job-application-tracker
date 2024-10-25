@@ -17,15 +17,57 @@ Desktop application built with Python/Tkinter for tracking job applications with
 ```
 job_tracker/
 │
-├── job_tracker.py        # Main application file
-├── form_dialog.py        # Form dialog implementation
-├── data_manager.py       # Data handling operations
-├── notifications_manager.py  # Notification state management
-├── reminder_dialog.py    # Reminder system dialogs
-├── notifications_state.json  # Notification persistence
+├── job_tracker.py          # Main application file
+├── form_dialog.py          # Form dialog implementation
+├── data_manager.py         # Data handling operations
+├── notifications_manager.py # Notification state management
+├── reminder_dialog.py      # Reminder system dialogs
+├── notifications_state.json # Notification persistence
 ├── job_applications.json   # Data storage file
-└── notifications.log     # Notification system logs
+├── notifications.log       # Notification system logs
+├── installer.bat           # Installation script
+├── launch.bat             # Main launcher (no console)
+└── launch_with_console.bat # Debug launcher (with console)
 ```
+
+## Installation and Launching
+
+### Installation Options
+The application can be installed using the provided `installer.bat` script which offers two installation methods:
+
+1. Standalone Version
+   - Runs from current location
+   - No system modifications needed
+   - Can be moved to any folder
+   - Portable installation
+
+2. System Installation
+   - Installs to Program Files
+   - Creates desktop shortcut
+   - Proper system integration
+
+### Launch Scripts
+The application includes two launch methods:
+
+1. `launch.bat` (Primary Launcher)
+   - Launches application without console window
+   - Provides clean, application-like experience
+   - Recommended for normal usage
+   - Uses `pythonw` to hide console
+
+2. `launch_with_console.bat` (Debug Launcher)
+   - Shows console window while running
+   - Displays Python output and errors
+   - Useful for debugging and development
+   - Uses standard `python` interpreter
+
+### Installation Process
+The installer handles:
+1. Python environment verification
+2. Required package installation
+3. Installation location selection
+4. File copying (for system installation)
+5. Shortcut creation (for system installation)
 
 ## Key Features
 
@@ -313,6 +355,9 @@ git clone [repository-url]
 # Navigate to directory
 cd job-tracker
 
-# Run application
-python job_tracker.py
+# Run application using normal launcher
+launch.bat
+
+# Run application with console (for debugging)
+launch_with_console.bat
 ```
