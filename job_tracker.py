@@ -12,6 +12,8 @@ import platform
 from typing import Optional, Dict, List, Any
 from data_manager import DataManager
 from form_dialog import FormDialog
+from notifications_manager import NotificationsManager
+from reminder_dialog import ReminderDialog
 
 class JobTracker:
     """Main application class for the Job Application Tracker."""
@@ -35,8 +37,10 @@ class JobTracker:
         
         self.root.configure(bg=self.colors['bg'])
         
-        # Initialize data manager
+        # Initialize managers
         self.data_manager = DataManager("job_applications.json")
+        self.notifications_manager = NotificationsManager()
+        
         self.applications = self.data_manager.load_data()
         
         # Sorting
@@ -46,6 +50,7 @@ class JobTracker:
         # Filters
         self.show_rejected = tk.BooleanVar(value=True)
         self.selected_country = tk.StringVar(value="All")
+        self.show_notifications = tk.BooleanVar(value=True)
         
         # Setup styles
         self.setup_styles()
@@ -55,6 +60,9 @@ class JobTracker:
         
         # Load initial data after GUI is ready
         self.root.after(100, self.initial_data_load)
+        
+        # Schedule notification check
+        self.root.after(1000, self.check_notifications)
         
     def setup_styles(self) -> None:
         """Configure application styles."""
@@ -124,6 +132,12 @@ class JobTracker:
                        text="Show Rejected",
                        variable=self.show_rejected,
                        command=self.refresh_list).pack(side=tk.LEFT, padx=5)
+        
+        # Show/Hide notifications
+        ttk.Checkbutton(left_controls,
+                       text="Show Update Reminders",
+                       variable=self.show_notifications,
+                       command=self.toggle_notifications).pack(side=tk.LEFT, padx=5)
         
         # Country filter
         self.update_country_filter(left_controls)
@@ -336,6 +350,89 @@ class JobTracker:
         self.details_comments = ScrolledText(right_col, height=4)
         self.details_comments.pack(fill=tk.BOTH, expand=True)
 
+    def toggle_notifications(self) -> None:
+        """Toggle notification checks."""
+        if self.show_notifications.get():
+            self.check_notifications()
+            
+    def check_notifications(self) -> None:
+        """Check for pending notifications and show reminder dialog."""
+        try:
+            if not self.show_notifications.get():
+                return
+                
+            pending_apps = self.notifications_manager.get_pending_notifications(self.applications)
+            if pending_apps:
+                ReminderDialog(self.root, pending_apps, self.colors, self.handle_notification_action)
+        except Exception as e:
+            logging.error(f"Error checking notifications: {str(e)}")
+            messagebox.showerror("Error",
+                               "Failed to check for updates. Please try again later.")
+                               
+    def handle_notification_action(self, application: Dict[str, Any], action: str) -> None:
+        """Handle notification actions (update/dismiss)."""
+        try:
+            if action == 'update':
+                # Validate status change
+                if not self.validate_status_change(application):
+                    return
+                    
+               # Update application in list
+                self.applications = [app for app in self.applications if app['id'] != application['id']]
+                self.applications.append(application)
+                
+                # Save and refresh
+                if self.data_manager.save_data(self.applications):
+                    self.refresh_list()
+                    
+                    # Select the updated item
+                    self.select_application_by_id(application['id'])
+                else:
+                    messagebox.showerror("Error",
+                                       "Failed to save changes. Please try again.")
+                    return
+                    
+            # Mark as dismissed in both cases
+            self.notifications_manager.dismiss_notification(application['id'])
+            
+        except Exception as e:
+            logging.error(f"Error handling notification action: {str(e)}")
+            messagebox.showerror("Error",
+                               "Failed to process the action. Please try again.")
+                               
+    def validate_status_change(self, application: Dict[str, Any]) -> bool:
+        """Validate status change based on current status."""
+        try:
+            current_app = next((app for app in self.applications
+                              if app['id'] == application['id']), None)
+            if not current_app:
+                return True
+                
+            old_status = current_app['status']
+            new_status = application['status']
+            
+            # Define valid status transitions
+            valid_transitions = {
+                'not_applied': ['applied', 'rejected'],
+                'applied': ['approved', 'rejected'],
+                'approved': ['rejected'],  # Allow approved to rejected
+                'rejected': ['applied']    # Allow reopening rejected applications
+            }
+            
+            if new_status not in valid_transitions.get(old_status, []):
+                messagebox.showwarning(
+                    "Invalid Status Change",
+                    f"Cannot change status from '{old_status}' to '{new_status}'.\n"
+                    f"Valid options are: {', '.join(valid_transitions.get(old_status, []))}"
+                )
+                return False
+                
+            return True
+            
+        except Exception as e:
+            logging.error(f"Error validating status change: {str(e)}")
+            return False
+
     def delete_selected_application(self) -> None:
         """Delete the currently selected application after confirmation."""
         if not hasattr(self, 'current_app_id'):
@@ -496,6 +593,18 @@ class JobTracker:
                     if self.tree.item(item)['values'][-1] == self.current_app_id:
                         self.tree.selection_set(item)
                         break
+                        
+    def select_application_by_id(self, app_id: str) -> None:
+        """Select an application in the tree by its ID."""
+        try:
+            for item in self.tree.get_children():
+                if self.tree.item(item)['values'][-1] == app_id:
+                    self.tree.selection_set(item)
+                    self.tree.see(item)
+                    self.show_selected_details()
+                    break
+        except Exception as e:
+            logging.error(f"Error selecting application: {str(e)}")
 
     def save_comments(self) -> None:
         """Save comments for current application."""
@@ -675,9 +784,27 @@ def main():
     except Exception as e:
         logging.error(f"Failed to set DPI awareness: {str(e)}")
     
-    root = tk.Tk()
-    app = JobTracker(root)
-    root.mainloop()
+    # Setup logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler('job_tracker.log'),
+            logging.StreamHandler()
+        ]
+    )
+    
+    try:
+        root = tk.Tk()
+        app = JobTracker(root)
+        root.mainloop()
+    except Exception as e:
+        logging.error(f"Application error: {str(e)}")
+        traceback.print_exc()
+        messagebox.showerror(
+            "Error",
+            "An unexpected error occurred. Please check the log file for details."
+        )
 
 if __name__ == "__main__":
     main()
