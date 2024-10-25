@@ -2,7 +2,7 @@
 
 A desktop application built with Python and Tkinter for tracking job applications. Keep track of your job search progress, application statuses, and important details in a clean, user-friendly interface.
 
-![Job Tracker UI](https://raw.githubusercontent.com/haroonalhadisk/job-application-tracker/main/screenshots/main.png)
+![Job Tracker UI](https://raw.githubusercontent.com/haroonalhadisk/job-application-tracker/refs/heads/main/screenshots/main.png)
 
 ## Features
 
