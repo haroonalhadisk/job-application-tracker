@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Callable, Dict, Any, List
 import logging
 import traceback
+import webbrowser
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -29,7 +30,7 @@ class ApplicationDetailsDialog(tk.Toplevel):
             self.callback = callback
             
             self.title(f"Application Details - {application['company']}")
-            self.geometry("600x400")
+            self.geometry("600x500")
             self.configure(bg=colors['bg'])
             
             # Make dialog modal
@@ -72,7 +73,8 @@ class ApplicationDetailsDialog(tk.Toplevel):
         fields = [
             ('Company:', self.application['company']),
             ('Position:', self.application['position']),
-            ('Date Applied:', self.application['date'])
+            ('Date Applied:', self.application['date']),
+            ('Link:', self.application.get('link', ''))
         ]
         
         for idx, (label, value) in enumerate(fields):
@@ -81,10 +83,22 @@ class ApplicationDetailsDialog(tk.Toplevel):
                     bg=self.colors['bg'],
                     anchor='w',
                     width=12).grid(row=idx, column=0, sticky='w', pady=2)
-            tk.Label(details_frame,
-                    text=value,
-                    bg=self.colors['bg'],
-                    anchor='w').grid(row=idx, column=1, sticky='w', pady=2)
+            
+            # Make link clickable if it's the link field
+            if label == 'Link:' and value:
+                link_label = tk.Label(details_frame,
+                                    text=value,
+                                    bg=self.colors['bg'],
+                                    fg='blue',
+                                    cursor='hand2',
+                                    anchor='w')
+                link_label.grid(row=idx, column=1, sticky='w', pady=2)
+                link_label.bind('<Button-1>', lambda e: self.open_link())
+            else:
+                tk.Label(details_frame,
+                        text=value,
+                        bg=self.colors['bg'],
+                        anchor='w').grid(row=idx, column=1, sticky='w', pady=2)
         
         # Status dropdown
         tk.Label(details_frame,
@@ -132,6 +146,17 @@ class ApplicationDetailsDialog(tk.Toplevel):
         """Load application data into form."""
         self.comments_text.delete('1.0', tk.END)
         self.comments_text.insert('1.0', self.application.get('comments', ''))
+        
+    def open_link(self, event=None) -> None:
+        """Open the application link in default browser."""
+        try:
+            link = self.application.get('link')
+            if link:
+                webbrowser.open(link)
+        except Exception as e:
+            logging.error(f"Error opening link: {str(e)}")
+            traceback.print_exc()
+            messagebox.showerror("Error", f"Failed to open link: {str(e)}")
         
     def update(self) -> None:
         """Update application details."""
