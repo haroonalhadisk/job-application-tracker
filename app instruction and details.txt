@@ -3,7 +3,7 @@
 ## Application Overview
 
 ### Purpose
-Desktop application built with Python/Tkinter for tracking job applications with a focus on maintaining application status, details, and comments in a local environment.
+Desktop application built with Python/Tkinter for tracking job applications with a focus on maintaining application status, details, and comments in a local environment. Includes a notification system for tracking application updates.
 
 ### Core Technology Stack
 - Python 3.7+
@@ -17,10 +17,14 @@ Desktop application built with Python/Tkinter for tracking job applications with
 ```
 job_tracker/
 │
-├── job_tracker.py     # Main application file
-├── form_dialog.py     # Form dialog implementation
-├── data_manager.py    # Data handling operations
-└── job_applications.json  # Data storage file
+├── job_tracker.py        # Main application file
+├── form_dialog.py        # Form dialog implementation
+├── data_manager.py       # Data handling operations
+├── notifications_manager.py  # Notification state management
+├── reminder_dialog.py    # Reminder system dialogs
+├── notifications_state.json  # Notification persistence
+├── job_applications.json   # Data storage file
+└── notifications.log     # Notification system logs
 ```
 
 ## Key Features
@@ -30,6 +34,8 @@ job_tracker/
 - Details panel (Bottom section)
 - Modal form dialog for Add/Edit operations
 - Control panel (Top section)
+- Reminder dialog for updates
+- Application details dialog for notifications
 
 ### 2. Functionality
 - CRUD operations for job applications
@@ -40,6 +46,12 @@ job_tracker/
 - Status tracking (Not Applied → Applied → Approved/Rejected)
 - Data filtering and sorting
 - Data export (JSON/CSV/TXT)
+- Update reminder system
+  - Daily notifications for pending updates
+  - Individual or bulk dismissal
+  - 24-hour reset cycle
+  - Detailed application view
+  - Quick status updates
 
 ## Component Architecture
 
@@ -49,6 +61,7 @@ job_tracker/
 - Handles user interactions and data display
 - Coordinates between UI and data operations
 - Provides deletion functionality with safety checks
+- Manages notification system integration
 
 ### 2. FormDialog Class
 - Modal dialog for adding/editing applications
@@ -62,6 +75,26 @@ job_tracker/
 - Data validation and cleanup
 - Error handling and logging
 
+### 4. NotificationsManager Class
+- Manages notification states
+- Handles notification persistence
+- 24-hour reset functionality
+- Notification state backup
+- Cleanup of old dismissals
+
+### 5. ReminderDialog Class
+- Displays pending application updates
+- Allows individual/bulk dismissal
+- Double-click for detailed view
+- Status updates from reminder
+
+### 6. ApplicationDetailsDialog Class
+- Shows detailed application information
+- Allows status updates
+- Comments editing
+- Clickable application links
+- Modal interaction
+
 ### Component Relationships
 
 ```mermaid
@@ -71,10 +104,13 @@ graph TD
     A --> D[Details Panel]
     A --> E[FormDialog]
     A --> F[DataManager]
-    E -- Submit --> F
-    F -- Load/Save --> G[JSON File]
+    A --> G[NotificationsManager]
+    G --> H[ReminderDialog]
+    H --> I[ApplicationDetailsDialog]
+    F -- Load/Save --> J[JSON Files]
     B -- Add/Edit/Delete --> E
     C -- Selection --> D
+    G -- State --> K[Notification State]
 ```
 
 ## Data Flow
@@ -94,65 +130,52 @@ graph TD
     "comments": str,
     "id": str  # Format: YYYYMMDDHHMMSS
 }
+
+# Notification State Pattern
+{
+    "last_reset": "YYYY-MM-DD HH:MM:SS",
+    "dismissals": {
+        "application_id": "YYYY-MM-DD HH:MM:SS"
+    }
+}
 ```
 
 ### 2. Critical Methods
 
-#### Form Dialog Creation
+#### Notification System
 ```python
-def show_add_dialog(self):
-    """Show dialog for adding new application."""
-    dialog = FormDialog(self.root, self.colors, self.handle_dialog_submit)
-    
-def show_edit_dialog(self):
-    """Show dialog for editing application."""
-    if hasattr(self, 'current_app_id'):
-        app = next((a for a in self.applications
-                   if a['id'] == self.current_app_id), None)
-        if app:
-            dialog = FormDialog(self.root, self.colors,
-                              self.handle_dialog_submit, app)
-```
+def check_notifications(self):
+    """Check for pending notifications and show reminder dialog."""
+    pending_apps = self.notifications_manager.get_pending_notifications(self.applications)
+    if pending_apps:
+        ReminderDialog(self.root, pending_apps, self.colors, self.handle_notification_action)
 
-#### Application Deletion
-```python
-def delete_selected_application(self) -> None:
-    """Delete the currently selected application after confirmation."""
-    if not hasattr(self, 'current_app_id'):
-        messagebox.showwarning(
-            "No Selection",
-            "Please select an application to delete."
-        )
-        return
-        
-    # Get application details for confirmation message
-    app = next((a for a in self.applications
-               if a['id'] == self.current_app_id), None)
-    if not app:
-        return
-        
-    # Show confirmation dialog
-    confirm = messagebox.askyesno(
-        "Confirm Deletion",
-        f"Are you sure you want to delete the application for:\n\n"
-        f"Company: {app['company']}\n"
-        f"Position: {app['position']}\n\n"
-        "This action cannot be undone.",
-        icon='warning'
-    )
-```
-
-#### Data Handling
-```python
-def handle_dialog_submit(self, application):
-    """Handle form dialog submission."""
-    if 'id' in application:  # Editing existing
-        self.applications = [app for app in self.applications
+def handle_notification_action(self, application, action):
+    """Handle notification actions (update/dismiss)."""
+    if action == 'update':
+        # Update application
+        self.applications = [app for app in self.applications 
                            if app['id'] != application['id']]
-    self.applications.append(application)
-    
-    if self.data_manager.save_data(self.applications):
+        self.applications.append(application)
+        self.data_manager.save_data(self.applications)
         self.refresh_list()
+        
+    # Mark as dismissed
+    self.notifications_manager.dismiss_notification(application['id'])
+```
+
+#### Reminder Dialog
+```python
+def on_double_click(self, event):
+    """Show application details dialog on double-click."""
+    selection = self.tree.selection()
+    if selection:
+        item = selection[0]
+        app_id = self.tree.item(item)['values'][-1]
+        app = next(app for app in self.applications 
+                  if app['id'] == app_id)
+        dialog = ApplicationDetailsDialog(self, app, self.colors,
+                                       self.handle_details_action)
 ```
 
 ## Testing Protocol
@@ -163,39 +186,123 @@ def handle_dialog_submit(self, application):
 3. Verify table population
 4. Verify details panel visibility
 5. Verify initial selection
+6. Check notification system initialization
 
-### 2. Form Dialog Testing
+### 2. Notification System Testing
+1. Test Initial Notification
+   - Verify notification appears on startup
+   - Check pending applications list
+   - Verify 24-hour reset
+2. Test Dismissal Functions
+   - Individual dismissal
+   - Bulk dismissal
+   - Dismiss persistence
+3. Test Update Functions
+   - Status updates
+   - Comments updates
+   - Link functionality
+
+### 3. Form Dialog Testing
 1. Test Add New Application
-   - Verify dialog appears centered
-   - Test form validation
-   - Check modal behavior
 2. Test Edit Application
-   - Verify data loading
-   - Test updates
-   - Verify cancel operation
 3. Test Delete Application
-   - Verify confirmation dialog appears
-   - Test deletion with and without confirmation
-   - Check list refresh after deletion
-   - Verify proper selection after deletion
 
-### 3. UI Interactions
+### 4. UI Interactions
 1. Sorting columns
 2. Filtering data
 3. Exporting data
 4. Dialog interactions
 5. Delete functionality
-   - Top panel delete button
-   - Details panel delete button
-   - Confirmation dialog
-   - Selection handling
+6. Notification interactions
 
-### 4. Data Consistency Checks
+### 5. Data Consistency Checks
 1. Verify ID handling
 2. Check data persistence
 3. Validate form input
 4. Test export functionality
 5. Verify deletion integrity
+6. Check notification state persistence
+
+## Best Practices
+
+### 1. Form Dialog Implementation
+- Use modal dialogs
+- Center dialogs on screen
+- Provide clear validation feedback
+- Handle window focus properly
+
+### 2. Data Management
+- Use consistent ID generation
+- Validate all required fields
+- Clean input data
+- Handle missing fields gracefully
+- Maintain data integrity
+- Ensure safe deletion with confirmation
+- Regular notification state cleanup
+
+### 3. Error Handling
+- Log all errors with context
+- Provide user feedback
+- Maintain data consistency
+- Handle UI state properly
+- Validate deletion operations
+- Handle notification errors gracefully
+
+### 4. UI State Management
+- Maintain selection state
+- Update related components
+- Handle visibility properly
+- Manage deletion state
+- Track notification states
+
+### 5. Delete Operation Safety
+- Show confirmation dialog
+- Display relevant details in confirmation
+- Provide clear warnings
+- Handle edge cases
+- Maintain data consistency
+- Update UI state appropriately
+
+### 6. Notification System
+- Regular state cleanup
+- Backup notification states
+- Handle notification resets
+- Proper modal dialog handling
+- Clear user feedback
+- Efficient update handling
+
+## Common Issues and Solutions
+
+### 1. Dialog Positioning
+- Automatic screen centering
+- Multi-monitor support
+- Consistent positioning
+
+### 2. Form Validation
+- Required field marking
+- Immediate feedback
+- Invalid data prevention
+- Clear error messages
+
+### 3. Data Integrity
+- Consistent ID handling
+- Proper date formatting
+- Status validation
+- Required field enforcement
+- Safe deletion handling
+
+### 4. Notification Management
+- State persistence
+- Reset timing
+- Dismissal tracking
+- Update propagation
+- Link handling
+
+### 5. Status Transitions
+- Valid state changes
+- Status update validation
+- Notification triggers
+- UI updates
 
 ## Development Environment Setup
 
@@ -209,83 +316,3 @@ cd job-tracker
 # Run application
 python job_tracker.py
 ```
-
-## Test Data Generation
-```python
-test_data = {
-    "company": "Test Corp",
-    "position": "Developer",
-    "date": "2024-01-01",
-    "status": "applied",
-    "country": "USA",
-    "state": "CA",
-    "link": "https://example.com",
-    "description": "Test job",
-    "comments": "Test comment",
-    "id": "20240101000000"
-}
-```
-
-## Best Practices
-
-### 1. Form Dialog Implementation
-- Always use modal dialogs for data entry
-- Center dialogs on screen
-- Provide clear validation feedback
-- Handle window focus properly
-
-### 2. Data Management
-- Use consistent ID generation
-- Validate all required fields
-- Clean input data
-- Handle missing fields gracefully
-- Maintain data integrity
-- Ensure safe deletion with confirmation
-
-### 3. Error Handling
-- Log all errors with context
-- Provide user feedback
-- Maintain data consistency
-- Handle UI state properly
-- Validate deletion operations
-
-### 4. UI State Management
-- Maintain selection state
-- Update related components
-- Handle visibility properly
-- Manage deletion state
-
-### 5. Delete Operation Safety
-- Always show confirmation dialog
-- Display relevant application details in confirmation
-- Provide clear warning about irreversible action
-- Handle edge cases (no selection)
-- Maintain data consistency after deletion
-- Update UI state appropriately
-
-## Common Issues and Solutions
-
-### 1. Dialog Positioning
-- Dialog now automatically centers on screen
-- Handles multiple monitors properly
-- Maintains consistent position
-
-### 2. Form Validation
-- Required fields clearly marked
-- Immediate feedback on validation
-- Prevents invalid data submission
-- Clear error messages
-
-### 3. Data Integrity
-- Consistent ID handling
-- Proper date formatting
-- Status validation
-- Required field enforcement
-- Safe deletion handling
-
-### 4. Delete Operation Handling
-- Confirmation required for deletion
-- Clear feedback messages
-- Proper selection handling
-- List refresh after deletion
-- Selection maintenance
